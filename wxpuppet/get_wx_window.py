@@ -10,39 +10,39 @@ import json
 
 
 # 创建 log 和 cache 文件夹
-os.makedirs("QQpuppet/log", exist_ok=True)
-os.makedirs("QQpuppet/cache", exist_ok=True)
+os.makedirs("wxpuppet/log", exist_ok=True)
+os.makedirs("wxpuppet/cache", exist_ok=True)
 
 # 配置日志
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('QQpuppet/log/qq_window_debug.log', encoding='utf-8'),
+        logging.FileHandler('wxpuppet/log/wx_window_debug.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger()
 
-def find_qq_window():
-    logger.debug("开始查找 QQ 窗口")
+def find_wx_window():
+    logger.debug("开始查找 wx 窗口")
     hwnd = win32gui.FindWindow(None, None)
     while hwnd:
         window_title = win32gui.GetWindowText(hwnd)
-        if "QQ" in window_title:
+        if "微信" in window_title:
             # 获取窗口位置和大小
             left, top, right, bottom = win32gui.GetWindowRect(hwnd)
             logger.debug(f"找到窗口: {window_title}, 位置: ({left}, {top}, {right}, {bottom})")
             if win32gui.IsWindowVisible(hwnd) and not win32gui.IsIconic(hwnd):
-                logger.info(f"找到可见的 QQ 窗口: {window_title}")
+                logger.info(f"找到可见的 wx 窗口: {window_title}")
                 return hwnd, (left, top, right, bottom)
             else:
                 logger.debug(f"窗口 {window_title} 不可见或最小化")
         hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
-    logger.warning("未找到任何 QQ 窗口")
+    logger.warning("未找到任何 wx 窗口")
     return None, None
 
-def capture_qq_window(left, top, right, bottom, output_path="QQpuppet/cache/qq_window_screenshot.png"):
+def capture_wx_window(left, top, right, bottom, output_path="wxpuppet/cache/wx_window_screenshot.png"):
     try:
         logger.debug(f"开始捕获窗口截图，区域: ({left}, {top}, {right-left}, {bottom-top})")
         time.sleep(0.5)  # 短暂延迟以确保窗口准备好
@@ -56,7 +56,7 @@ def capture_qq_window(left, top, right, bottom, output_path="QQpuppet/cache/qq_w
         logger.error(f"截图失败: {str(e)}")
         return None
 
-def save_window_position(left, top, right, bottom, output_path="QQpuppet/cache/window_position.json"):
+def save_window_position(left, top, right, bottom, output_path="wxpuppet/cache/window_position.json"):
     try:
         logger.debug(f"保存窗口位置到: {output_path}")
         position = {
@@ -71,7 +71,7 @@ def save_window_position(left, top, right, bottom, output_path="QQpuppet/cache/w
     except Exception as e:
         logger.error(f"保存窗口位置失败: {str(e)}")
 
-def read_window_position(input_path="QQpuppet/cache/window_position.json"):
+def read_window_position(input_path="wxpuppet/cache/window_position.json"):
     try:
         logger.debug(f"开始读取窗口位置从: {input_path}")
         if not os.path.exists(input_path):
@@ -97,23 +97,23 @@ def read_window_position(input_path="QQpuppet/cache/window_position.json"):
 
 def new_window_all():
     try:
-        hwnd, rect = find_qq_window()
+        hwnd, rect = find_wx_window()
         if hwnd:
             left, top, right, bottom = rect
-            print(f"QQ 窗口位置: 左上角 ({left}, {top}), 右下角 ({right}, {bottom})")
-            logger.info(f"QQ 窗口位置: 左上角 ({left}, {top}), 右下角 ({right}, {bottom})")
+            print(f"wx 窗口位置: 左上角 ({left}, {top}), 右下角 ({right}, {bottom})")
+            logger.info(f"wx 窗口位置: 左上角 ({left}, {top}), 右下角 ({right}, {bottom})")
             
             # 保存窗口位置
             save_window_position(left, top, right, bottom)
             
             # 捕获窗口截图
-            screenshot = capture_qq_window(left, top, right, bottom)
+            screenshot = capture_wx_window(left, top, right, bottom)
             if screenshot is not None:
-                print(f"截图已保存至: QQpuppet/cache/qq_window_screenshot.png")
+                print(f"截图已保存至: wxpuppet/cache/wx_window_screenshot.png")
             else:
                 print("截图失败，请检查日志")
         else:
-            print("未找到 QQ 窗口")
+            print("未找到 wx 窗口")
     except Exception as e:
         logger.exception(f"程序执行出错: {str(e)}")
         print(f"发生错误: {str(e)}")    

@@ -8,7 +8,7 @@ def fetch_posts_from_server():
     """
     从远程服务器获取帖子数据
     """
-    url = 'https://www.scuclub.top/api/blog/qqfetchPosts/'  # 根据实际情况更新 URL
+    url = 'https://www.scuclub.top/api/blog/fetchPosts/'  # 根据实际情况更新 URL
     try:
         response = requests.get(url)
         response.raise_for_status()  # 如果请求失败，抛出 HTTPError 异常

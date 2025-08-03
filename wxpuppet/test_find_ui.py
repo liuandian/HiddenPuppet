@@ -5,18 +5,18 @@ from PIL import Image
 import pyautogui
 import time
 import os
-import QQpuppet.get_qq_window as get_qq_window
+import wxpuppet.get_wx_window as get_wx_window
 
 # 创建 log 和 cache 文件夹
-os.makedirs("QQpuppet/log", exist_ok=True)
-os.makedirs("QQpuppet/cache", exist_ok=True)
+os.makedirs("wxpuppet/log", exist_ok=True)
+os.makedirs("wxpuppet/cache", exist_ok=True)
 
 # 配置日志
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('QQpuppet/log/ui_element_debug.log', encoding='utf-8'),
+        logging.FileHandler('wxpuppet/log/ui_element_debug.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -24,7 +24,7 @@ logger = logging.getLogger()
 
 def find_ui_element(template_path, threshold=0.7):
     logger.debug("开始执行 find_ui_element 函数")
-    left, top, right, bottom = get_qq_window.read_window_position()
+    left, top, right, bottom = get_wx_window.read_window_position()
     region = (left, top, right-left, bottom-top)
     screenshot = capture_screenshot(region)  # 可传入 region=(left, top, width, height)
     
@@ -82,7 +82,7 @@ def find_ui_element(template_path, threshold=0.7):
         cv2.circle(screenshot_with_box, (center_x, center_y), 5, (0, 0, 255), -1)
         
         # 保存可视化结果
-        output_path = "QQpuppet/cache/match_result.png"
+        output_path = "wxpuppet/cache/match_result.png"
         cv2.imwrite(output_path, screenshot_with_box)
         logger.info(f"匹配结果已保存至: {output_path}")
         
@@ -90,7 +90,7 @@ def find_ui_element(template_path, threshold=0.7):
     else:
         logger.warning(f"匹配失败，置信度: {max_val:.4f} 小于阈值 {threshold}")
         # 保存原始截图以供调试
-        output_path = "QQpuppet/cache/failed_screenshot.png"
+        output_path = "wxpuppet/cache/failed_screenshot.png"
         cv2.imwrite(output_path, screenshot)
         logger.info("未匹配成功的截图已保存至: {output_path}")
         return None
@@ -102,7 +102,7 @@ def create_mask(template, ignore_region=None):
         x, y, w, h = ignore_region
         mask[y:y+h, x:x+w] = 0  # 忽略区域设为黑色
     logger.debug(f"创建掩码，忽略区域: {ignore_region}")
-    output_path = "QQpuppet/cache/template_mask.png"
+    output_path = "wxpuppet/cache/template_mask.png"
     cv2.imwrite(output_path, mask)
     logger.info(f"掩码已保存至: {output_path}")
     return mask
@@ -198,7 +198,7 @@ def non_max_suppression(locations, scores, template_w, template_h, iou_threshold
             logger.debug(f"过滤框 {i}: 中心坐标 ({center_x}, {center_y}), 分数: {scores[i]:.4f}")
     
     # 保存输入和输出到文件
-    debug_path = "QQpuppet/cache/nms_debug.txt"
+    debug_path = "wxpuppet/cache/nms_debug.txt"
     with open(debug_path, "w", encoding="utf-8") as f:
         f.write("NMS 输入:\n")
         for i, (box, score) in enumerate(zip(boxes, scores)):
@@ -220,9 +220,9 @@ def non_max_suppression(locations, scores, template_w, template_h, iou_threshold
     
     return filtered_locations, filtered_scores
     
-def find_multi_ui_element(template_path, threshold=0.8, ignore_region=None):
+def find_multi_ui_element(template_path, threshold=0.9, ignore_region=None):
     logger.debug("开始执行 find_multi_ui_element 函数")
-    left, top, right, bottom = get_qq_window.read_window_position()
+    left, top, right, bottom = get_wx_window.read_window_position()
     if not all(isinstance(x, int) for x in [left, top, right, bottom]) or right <= left or bottom <= top:
         logger.error(f"无效的窗口位置: 左上角 ({left}, {top}), 右下角 ({right}, {bottom})")
         return None
@@ -290,16 +290,16 @@ def find_multi_ui_element(template_path, threshold=0.8, ignore_region=None):
     
     if not locations:
         logger.warning(f"匹配失败，无位置满足阈值 {threshold}")
-        output_path = "QQpuppet/cache/failed_screenshot.png"
+        output_path = "wxpuppet/cache/failed_screenshot.png"
         cv2.imwrite(output_path, screenshot)
         logger.info(f"未匹配成功的截图已保存至: {output_path}")
         return None
-    
+    logger.debug(f"Scores： {scores} Locations: {locations}")
     # 应用非极大值抑制
     locations, scores = non_max_suppression(locations, scores, template_w, template_h, iou_threshold=0.5)
     if not locations:
         logger.warning("NMS 后无匹配位置")
-        output_path = "QQpuppet/cache/failed_screenshot.png"
+        output_path = "wxpuppet/cache/failed_screenshot.png"
         cv2.imwrite(output_path, screenshot)
         logger.info(f"未匹配成功的截图已保存至: {output_path}")
         return None
@@ -320,39 +320,52 @@ def find_multi_ui_element(template_path, threshold=0.8, ignore_region=None):
         cv2.circle(screenshot_with_box, (center_x - left, center_y - top), 5, (0, 0, 255), -1)
     
     # 保存可视化结果
-    output_path = "QQpuppet/cache/match_result.png"
+    output_path = "wxpuppet/cache/match_result.png"
     cv2.imwrite(output_path, screenshot_with_box)
     logger.info(f"匹配结果（{len(matches)} 个目标）已保存至: {output_path}")
     
     return matches if matches else None
 
 def find_miniprogram_element():
-    template_path = "QQpuppet/template/miniprogram.png"
+    template_path = "wxpuppet/template/miniprogram.png"
     return  find_ui_element(template_path)
 
 def find_forward_button_element():
-    template_path = "QQpuppet/template/forward_button.png"
+    template_path = "wxpuppet/template/forward_button.png"
     return  find_ui_element(template_path)
 
 def find_search_group_button_element():
-    template_path = "QQpuppet/template/search_group.png"
+    template_path = "wxpuppet/template/search_group.png"
     return  find_ui_element(template_path)
 
 def find_send_msg_element():
-    template_path = "QQpuppet/template/send_msg.png"
+    template_path = "wxpuppet/template/send_msg.png"
+    return  find_ui_element(template_path)
+
+def find_send_button_element():
+    template_path = "wxpuppet/template/send_button.png"
     return  find_ui_element(template_path)
 
 def find_cancel_button_element():
-    template_path = "QQpuppet/template/cancel_button.png"
+    template_path = "wxpuppet/template/cancel_button.png"
     return  find_ui_element(template_path)
 
 def find_final_send_element():
-    template_path = "QQpuppet/template/final_send.png"
+    template_path = "wxpuppet/template/final_send.png"
+    return  find_ui_element(template_path)
+
+def find_show_all_group_element():
+    template_path = "wxpuppet/template/show_all_group.png"
     return  find_ui_element(template_path)
 
 def find_multi_group_button_element():
-    template_path = "QQpuppet/template/multi_group.png"
-    return  find_multi_ui_element(template_path,ignore_region=(40, 0, 40, 40))
+    template_path = "wxpuppet/template/multi_group.png"
+    return  find_multi_ui_element(template_path,ignore_region=(35, 0, 45, 45))
+
+def find_multi_group_test_button_element():
+    template_path = "wxpuppet/template/multi_group_test.png"
+    return  find_multi_ui_element(template_path,ignore_region=(40, 0, 40, 45))
+
 
 def capture_screenshot(region=None):
     """捕获屏幕截图"""
@@ -365,5 +378,6 @@ def capture_screenshot(region=None):
     return screenshot
 
 if __name__ == "__main__":
-    
-    find_miniprogram_element()
+    time.sleep(3)
+    find_multi_group_button_element() 
+
