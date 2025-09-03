@@ -45,10 +45,11 @@ def run_scheduled(interval_minutes, test):
             # 先获取消息并检查是否为空
             qq_msg = qq_fetch_and_process_messages()
             wx_msg = wx_fetch_and_process_messages()
-            
+                
             if test:
-                qq_start.automate_miniprogram(msg_content="qq_msg",test=True)
-                wx_start.execute_one(page_num=3, msg_content="wx_msg", test=True)
+                wx_msg = "【测试模式】" + (wx_msg if wx_msg else "无新消息")
+                qq_start.automate_miniprogram(msg_content=qq_msg,test=True)
+                wx_start.execute_one(page_num=3, msg_content=wx_msg, test=True)
             else:
                 #如果消息为空，直接返回不执行后续操作
                 if not qq_msg and not wx_msg:

@@ -34,7 +34,7 @@ def find_ui_element(template_path, threshold=0.7):
         return None
     
     # 加载模板图像
-    logger.debug(f"加载模板图像: {template_path}")
+    # logger.debug(f"加载模板图像: {template_path}")
     template = cv2.imread(template_path, 0)
     if template is None:
         logger.error(f"无法加载模板图像 {template_path}")
@@ -42,7 +42,7 @@ def find_ui_element(template_path, threshold=0.7):
     
     # 记录模板图像尺寸
     template_h, template_w = template.shape
-    logger.debug(f"模板图像尺寸: {template_w}x{template_h}")
+    # logger.debug(f"模板图像尺寸: {template_w}x{template_h}")
     
     # 检查截图是否有效
     if screenshot is None:
@@ -54,11 +54,11 @@ def find_ui_element(template_path, threshold=0.7):
     logger.debug(f"截图尺寸: {screenshot_w}x{screenshot_h}")
     
     # 转换为灰度图
-    logger.debug("将截图转换为灰度图")
+    # logger.debug("将截图转换为灰度图")
     screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
     
     # 执行模板匹配
-    logger.debug("执行模板匹配 (方法: TM_CCOEFF_NORMED)")
+    # logger.debug("执行模板匹配 (方法: TM_CCOEFF_NORMED)")
     result = cv2.matchTemplate(screenshot_gray, template, cv2.TM_CCOEFF_NORMED)
     
     # 获取匹配结果
@@ -92,7 +92,7 @@ def find_ui_element(template_path, threshold=0.7):
         # 保存原始截图以供调试
         output_path = "wxpuppet/cache/failed_screenshot.png"
         cv2.imwrite(output_path, screenshot)
-        logger.info("未匹配成功的截图已保存至: {output_path}")
+        logger.info(f"未匹配成功的截图已保存至: {output_path}")
         return None
 
 def create_mask(template, ignore_region=None):
@@ -326,9 +326,104 @@ def find_multi_ui_element(template_path, threshold=0.9, ignore_region=None):
     
     return matches if matches else None
 
+
+# 唯一目标匹配，返回单个坐标
+def find_uni_ui_element(template_path, threshold=0.8):
+    logger.debug("开始执行 find_uni_ui_element 函数")
+    left, top, right, bottom = get_wx_window.read_window_position()
+    region = (left, top, right-left, bottom-top)
+    screenshot = capture_screenshot(region)  # 可传入 region=(left, top, width, height)
+    
+    # 检查模板图像是否存在
+    if not os.path.exists(template_path):
+        logger.error(f"模板图像 {template_path} 不存在")
+        return None
+    
+    # 加载模板图像
+    template = cv2.imread(template_path, 0)
+    if template is None:
+        logger.error(f"无法加载模板图像 {template_path}")
+        return None
+    
+    # 记录模板图像尺寸
+    template_h, template_w = template.shape
+    
+    # 检查截图是否有效
+    if screenshot is None:
+        logger.error("截图为空")
+        return None
+    
+    # 记录截图尺寸
+    screenshot_h, screenshot_w = screenshot.shape[:2]
+    logger.debug(f"截图尺寸: {screenshot_w}x{screenshot_h}")
+    
+    # 转换为灰度图
+    screenshot_gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
+    
+    # 执行模板匹配
+    result = cv2.matchTemplate(screenshot_gray, template, cv2.TM_CCOEFF_NORMED)
+    
+    # 找到所有大于阈值的匹配位置
+    locations = np.where(result >= threshold)
+    locations = list(zip(*locations[::-1]))  # 转换为 (x, y) 坐标列表
+    
+    if not locations:
+        logger.warning(f"匹配失败，置信度低于阈值 {threshold}")
+        # 保存原始截图以供调试
+        output_path = "wxpuppet/cache/failed_screenshot.png"
+        cv2.imwrite(output_path, screenshot)
+        logger.info(f"未匹配成功的截图已保存至: {output_path}")
+        return None
+    
+    # 找到最右下角的匹配点 (x+y 最大)
+    max_sum = -1
+    selected_loc = None
+    for loc in locations:
+        x, y = loc
+        if x + y > max_sum:
+            max_sum = x + y
+            selected_loc = loc
+    
+    logger.info(f"匹配成功，置信度: {result[selected_loc[1], selected_loc[0]]:.4f} (阈值: {threshold})")
+    top_left = selected_loc
+    center_x = top_left[0] + template_w // 2
+    center_y = top_left[1] + template_h // 2
+    logger.debug(f"最右下角匹配中心坐标: ({center_x}, {center_y})")
+    
+    # 可视化匹配结果
+    logger.debug("生成匹配结果可视化图像")
+    screenshot_with_box = screenshot.copy()
+    bottom_right = (top_left[0] + template_w, top_left[1] + template_h)
+    cv2.rectangle(screenshot_with_box, top_left, bottom_right, (0, 255, 0), 2)
+    cv2.circle(screenshot_with_box, (center_x, center_y), 5, (0, 0, 255), -1)
+    
+    # 保存可视化结果
+    output_path = "wxpuppet/cache/match_result.png"
+    cv2.imwrite(output_path, screenshot_with_box)
+    logger.info(f"匹配结果已保存至: {output_path}")
+    
+    return center_x, center_y
+
 def find_miniprogram_element():
     template_path = "wxpuppet/template/miniprogram.png"
     return  find_ui_element(template_path)
+
+def find_first_search():
+    template_path = "wxpuppet/template/first_search.png"
+    return  find_ui_element(template_path)
+
+def find_first_self():
+    template_path = "wxpuppet/template/first_self.png"
+    return  find_ui_element(template_path)
+
+def find_input_box():
+    template_path = "wxpuppet/template/input_box.png"
+    return  find_ui_element(template_path)
+
+def find_input_send_button():
+    template_path = "wxpuppet/template/input_send_button.png"
+    return  find_ui_element(template_path)
+
 
 def find_forward_button_element():
     template_path = "wxpuppet/template/forward_button.png"
@@ -360,11 +455,16 @@ def find_show_all_group_element():
 
 def find_multi_group_button_element():
     template_path = "wxpuppet/template/multi_group.png"
-    return  find_multi_ui_element(template_path,ignore_region=(35, 0, 45, 45))
+    return  find_multi_ui_element(template_path,ignore_region=(30, 0, 55, 45))
 
 def find_multi_group_test_button_element():
     template_path = "wxpuppet/template/multi_group_test.png"
     return  find_multi_ui_element(template_path,ignore_region=(40, 0, 40, 45))
+
+
+def find_uni_sended_msg_element():
+    template_path = "wxpuppet/template/sended_msg.png"
+    return  find_uni_ui_element(template_path)
 
 
 def capture_screenshot(region=None):
