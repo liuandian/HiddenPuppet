@@ -35,6 +35,20 @@ def wx_fetch_and_process_messages():
         print("获取微信消息时发生错误:", msgs.get('error'))
         return ""
 
+def wx_tai_fetch_and_process_messages():
+    """
+    获取泰yeah啦并处理微信消息内容
+    """
+    msgs = wx_process_text.fetch_tai_posts_from_server()
+    if isinstance(msgs, dict):
+        # 假设消息内容在'result'字段中，参考之前的接口返回格式
+        return msgs.get('result', '').strip()
+    elif isinstance(msgs, str):
+        return msgs.strip()
+    else:
+        print("获取微信消息时发生错误:", msgs.get('error'))
+        return ""
+
 def run_scheduled(interval_minutes, test):
     """定时执行自动化任务，仅当有消息时才发送"""
     run_count = 0
@@ -45,11 +59,13 @@ def run_scheduled(interval_minutes, test):
             # 先获取消息并检查是否为空
             qq_msg = qq_fetch_and_process_messages()
             wx_msg = wx_fetch_and_process_messages()
-                
+            wx_tai_msg = wx_tai_fetch_and_process_messages()
+            
             if test:
                 wx_msg = "【测试模式】" + (wx_msg if wx_msg else "无新消息")
                 qq_start.automate_miniprogram(msg_content=qq_msg,test=True)
                 wx_start.execute_one(page_num=3, msg_content=wx_msg, test=True)
+                wx_start.execute_tai_one(page_num=1, msg_content=wx_tai_msg, test=True)
             else:
                 #如果消息为空，直接返回不执行后续操作
                 if not qq_msg and not wx_msg:
